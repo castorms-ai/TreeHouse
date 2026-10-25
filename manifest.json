@@ -1,0 +1,9 @@
+{
+  "name": "Tree House",
+  "short_name": "Tree House",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#1e1e1e",
+  "theme_color": "#1e1e1e"
+}
