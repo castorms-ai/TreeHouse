@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Tree House</title>
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #000; touch-action: none; height: 100%; font-family: monospace; user-select: none; }
+  #game { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+  #hud { position: absolute; top: 10px; left: 10px; color: #fff; font-size: 13px; line-height: 1.4; text-shadow: 1px 1px 2px #000; pointer-events: none; background: rgba(20,40,20,0.7); padding: 8px 12px; border-radius: 10px; border: 2px solid #3a5a3a; min-width: 180px; max-width: 60vw; }
+  .quest-box { margin-top: 6px; font-size: 12px; color: #ffd966; background: rgba(0,0,0,0.3); padding: 4px 6px; border-radius: 6px; }
+  .day-counter { margin-top: 6px; font-size: 12px; color: #fff; font-weight: bold; }
+
+  #playerHud { position: absolute; top: 10px; right: 10px; color: #fff; font-size: 13px; text-shadow: 1px 1px 2px #000; pointer-events: none; background: rgba(40,20,20,0.7); padding: 8px 12px; border-radius: 10px; border: 2px solid #5a3a3a; text-align: right; }
+  .bar-bg { width: 100px; height: 8px; background: #333; border-radius: 4px; margin-top: 2px; overflow: hidden; margin-left: auto; }
+  .bar-fill { height: 100%; width: 100%; transition: width 0.2s ease; }
+  #hpBarFill { background: #ff4444; }
+  #hungerBarFill { background: #cd853f; }
+  #coinDisplay { margin-top: 6px; color: #ffd700; font-weight: bold; }
+  
+  #resetBtn { position: absolute; bottom: 10px; right: 10px; background: rgba(255,0,0,0.3); color: #fff; border: 1px solid #f00; border-radius: 6px; padding: 4px 8px; font-size: 10px; pointer-events: auto; cursor: pointer; z-index: 6; }
+  #hint { position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); color: #ffd966; font-size: 14px; font-weight: bold; text-shadow: 1px 1px 2px #000; pointer-events: none; white-space: nowrap; background: rgba(0,0,0,0.5); padding: 4px 10px; border-radius: 6px; }
+  #sleepOverlay { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 1s ease; z-index: 5; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 28px; font-family: monospace; }
+
+  #hotbar { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 4; }
+  .slot { width: 44px; height: 44px; background: rgba(0,0,0,0.5); border: 2px solid #555; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-size: 20px; position: relative; pointer-events: auto; cursor: pointer; }
+  .slot.active { border-color: #ffab40; background: rgba(255,171,64,0.3); }
+  .slot-count { position: absolute; bottom: -2px; right: 2px; font-size: 10px; font-weight: bold; text-shadow: 1px 1px 1px #000; }
+
+  .menu { position: absolute; inset: 0; background: rgba(0,0,0,0.9); display: none; flex-direction: column; align-items: center; justify-content: flex-start; color: #fff; padding: 10px 10px 60px 10px; box-sizing: border-box; z-index: 10; overflow-y: auto; overflow-x: hidden; gap: 10px; }
+  .menu.open { display: flex; }
+  .menu h2 { margin: 0 0 4px; font-size: 16px; }
+  
+  #workbenchMenu { flex-direction: row; gap: 20px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+  .craft-list { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
+  .craft-item { background: #333; border: 2px solid #666; border-radius: 8px; padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; width: 180px; }
+  .craft-item.active { border-color: #ffab40; background: #444; }
+  .craft-info { display: flex; flex-direction: column; align-items: center; background: #222; padding: 16px; border-radius: 10px; border: 2px solid #555; min-width: 200px; }
+  .craft-btn { margin-top: 16px; padding: 10px 30px; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; }
+  .craft-btn.green { background: #4caf50; color: #fff; }
+  .craft-btn.gray { background: #555; color: #999; cursor: not-allowed; }
+
+  #furnaceMenu { flex-direction: row; gap: 20px; justify-content: center; flex-wrap: wrap; }
+  .furnace-slot { width: 60px; height: 60px; background: #222; border: 2px solid #555; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font-size: 24px; position: relative; }
+  .furnace-slot .slot-count { font-size: 12px; }
+  .furnace-arrow { font-size: 30px; color: #888; }
+  .furnace-controls { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+
+  .recipe, .storeRow { background: #333; border: 2px solid #666; border-radius: 8px; padding: 8px 12px; margin: 5px; min-width: 280px; max-width: 95vw; display: flex; justify-content: space-between; align-items: center; font-size: 12px; gap: 8px; }
+  .recipe button, .storeRow button { background: #ffab40; border: none; border-radius: 6px; padding: 6px 10px; font-family: monospace; font-weight: bold; cursor: pointer; font-size: 12px; }
+  .recipe button:disabled { background: #555; color: #999; }
+  
+  .close-btn { margin-top: 14px; background: #c33; color: #fff; border: none; border-radius: 8px; padding: 10px 22px; font-family: monospace; font-weight: bold; font-size: 15px; cursor: pointer; flex-shrink: 0; }
+  
+  .tabs { display: flex; gap: 10px; margin-bottom: 12px; flex-shrink: 0; }
+  .tabs button { background: #444; color: #fff; border: 2px solid #666; border-radius: 8px; padding: 8px 16px; font-family: monospace; font-weight: bold; font-size: 14px; cursor: pointer; }
+  .tabs button.active { background: #ffab40; color: #000; border-color: #ffab40; }
+
+  @media (orientation: landscape) {
+    .menu { padding: 5px 5px 45px 5px; }
+    #craftMenu #content { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; max-height: 60vh; overflow-y: auto; width: 100%; }
+    .recipe, .storeRow { min-width: 240px; padding: 4px 8px; margin: 2px; }
+    .tabs button { padding: 6px 12px; font-size: 12px; }
+    .close-btn { padding: 6px 16px; font-size: 13px; margin-top: 5px; }
+    .menu h2 { display: none; }
+    .craft-list { max-height: 70vh; }
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <canvas id="c"></canvas>
+
+  <div id="hud">
+    <div id="invDisplay">🪨 0/10 🪵 0/10 ⚙️ 0/10</div>
+    <div class="quest-box" id="questDisplay">⬜ Загрузка...</div>
+    <div class="day-counter" id="dayCounter">☀️ День: 1</div>
+  </div>
+
+  <div id="playerHud">
+    <div>❤️ <span id="hpText">20/20</span></div>
+    <div class="bar-bg"><div id="hpBarFill" class="bar-fill"></div></div>
+    <div style="margin-top:4px;">🍗 <span id="hungerText">100%</span></div>
+    <div class="bar-bg"><div id="hungerBarFill" class="bar-fill"></div></div>
+    <div id="coinDisplay">🪙 <span id="coinText">0</span></div>
+  </div>
+  
+  <button id="resetBtn">Сброс</button>
+  <div id="hint">Джойстик — ходьба. ⛏ — использовать</div>
+  <div id="sleepOverlay"></div>
+  <div id="hotbar"></div>
+  
+  <div id="craftMenu" class="menu">
+    <h2>🔨 Кузница</h2>
+    <div id="content"></div>
+    <button id="closeCraft" class="close-btn">Закрыть</button>
+  </div>
+
+  <div id="tradeMenu" class="menu">
+    <h2>🤝 Торговец</h2>
+    <div id="tradeContent"></div>
+    <button id="closeTrade" class="close-btn">Закрыть</button>
+  </div>
+
+  <div id="workbenchMenu" class="menu">
+    <div class="craft-list" id="craftList"></div>
+    <div class="craft-info" id="craftInfo" style="display:none;"></div>
+    <button id="closeWorkbench" class="close-btn" style="position:absolute; bottom:10px;">Закрыть</button>
+  </div>
+
+  <div id="furnaceMenu" class="menu">
+    <div style="display:flex; gap:20px; align-items:center; margin-top: 10px;">
+      <div class="furnace-slot" id="furnaceSlotInput">+</div>
+      <div class="furnace-arrow">➡</div>
+      <div class="furnace-slot" id="furnaceSlotOutput">+</div>
+    </div>
+    <div style="display:flex; gap:20px; align-items:center; margin-top:10px;">
+      <div class="furnace-slot" id="furnaceSlotFuel" style="width:60px; height:60px;"></div>
+    </div>
+    <div class="furnace-controls" style="margin-top:10px;">
+      <div id="furnaceStatus" style="font-size:14px; color:#aaa;">Топливо: 0</div>
+    </div>
+    <button id="closeFurnace" class="close-btn" style="position:absolute; bottom:10px;">Закрыть</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+const invDisplay = document.getElementById('invDisplay');
+const questDisplay = document.getElementById('questDisplay');
+const dayCounterEl = document.getElementById('dayCounter');
+const sleepOverlay = document.getElementById('sleepOverlay');
+const hpText = document.getElementById('hpText');
+const hpBarFill = document.getElementById('hpBarFill');
+const hungerText = document.getElementById('hungerText');
+const hungerBarFill = document.getElementById('hungerBarFill');
+const coinText = document.getElementById('coinText');
+const hotbarEl = document.getElementById('hotbar');
+const resetBtn = document.getElementById('resetBtn');
+const hintEl = document.getElementById('hint');
+
+const craftMenu = document.getElementById('craftMenu');
+const contentEl = document.getElementById('content');
+const closeCraftBtn = document.getElementById('closeCraft');
+
+const tradeMenu = document.getElementById('tradeMenu');
+const tradeContent = document.getElementById('tradeContent');
+const closeTradeBtn = document.getElementById('closeTrade');
+
+const workbenchMenu = document.getElementById('workbenchMenu');
+const craftListEl = document.getElementById('craftList');
+const craftInfoEl = document.getElementById('craftInfo');
+const closeWorkbenchBtn = document.getElementById('closeWorkbench');
+
+const furnaceMenu = document.getElementById('furnaceMenu');
+const furnaceSlotInput = document.getElementById('furnaceSlotInput');
+const furnaceSlotFuel = document.getElementById('furnaceSlotFuel');
+const furnaceSlotOutput = document.getElementById('furnaceSlotOutput');
+const furnaceStatus = document.getElementById('furnaceStatus');
+const closeFurnaceBtn = document.getElementById('closeFurnace');
+
+let W = 0, H = 0;
+function resize() {
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W; canvas.height = H;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+}
+window.addEventListener('resize', resize); resize();
+
+// ===== ИГРОВОЕ СОСТОЯНИЕ =====
+let player = { x: 0, y: 0, r: 14, speed: 190, hp: 20, maxHp: 20, hunger: 100, hitCooldown: 0, hungerTimer: 0 };
+let inv = { stone: 0, wood: 0, iron: 0, coin: 0, potato: 0, berry: 0, seedPotato: 0, seedBerry: 0, torch: 0, hoe: 0, wateringCan: 0, meat: 0, cookedMeat: 0, fish: 0, cookedFish: 0, bow: 0, fishingRod: 0 };
+let tools = { pickaxe: 'wood', axe: 'wood', sword: null };
+let day = 1;
+let hasSleptOnce = false;
+
+let build = { level: 1, x: 0, y: 0, w: 200, h: 140, stone: 0, wood: 0, iron: 0 };
+let forge = { x: 0, y: 0, r: 45, active: false, storage: { stone: 0, wood: 0, iron: 0 } };
+let farm = { x: 0, y: 0, w: 200, h: 200, built: false, stone: 0, wood: 0 };
+let farmPlots = [];
+let resources = [];
+
+let robotHouse = { x: 0, y: 0, w: 100, h: 80, built: false, stone: 0, wood: 0, iron: 0 };
+let robot = { active: false, x: 0, y: 0, r: 10, speed: 90, state: 'idle', target: null, invWood: 0, invStone: 0, hitTimer: 0 };
+
+let furnace = { x: 0, y: 0, built: false, input: null, output: null, fuel: 0, cookTimer: 0, maxCookTime: 5 };
+let pond = { x: 0, y: 0, r: 80 };
+let animals = [];
+let arrows = [];
+let isFishing = false;
+let fishingTimer = 0;
+
+const MAP_W = 1600;
+const MAP_H = 1200;
+const cam = { x: 0, y: 0 };
+
+const INV_MAX = 10;
+const SWORD_DMG = { wood: 1, stone: 3, iron: 7 };
+let activeItem = null;
+
+const HITS_BASE = { stone: 5, tree: 5, iron: 10 };
+const RESPAWN_TIME = 15;
+
+let isNight = false;
+let isSleeping = false;
+let nextNightTimer = 300 * 1000;
+let zombieSpawnTimer = 0;
+let zombies = [];
+let bossSpawnedThisNight = false;
+let merchant = { active: false, x: 0, y: 0 };
+let bossProjectiles = []; // Шарики босса
+
+function initWorld() {
+  player.x = MAP_W / 2; player.y = MAP_H / 2;
+  player.hp = player.maxHp; player.hunger = 100;
+  build = { level: 1, x: MAP_W/2 + 200, y: MAP_H/2 - 100, w: 200, h: 140, stone: 0, wood: 0, iron: 0 };
+  forge = { x: build.x + 170, y: build.y + 110, r: 45, active: false, storage: { stone: 0, wood: 0, iron: 0 } };
+  farm = { x: MAP_W - 300, y: MAP_H / 2, w: 200, h: 200, built: false, stone: 0, wood: 0 };
+  robotHouse = { x: build.x - 250, y: build.y, w: 100, h: 80, built: false, stone: 0, wood: 0, iron: 0 };
+  robot = { active: false, x: 0, y: 0, r: 10, speed: 90, state: 'idle', target: null, invWood: 0, invStone: 0, hitTimer: 0 };
+  furnace = { x: build.x - 250 + 80, y: build.y + 50, built: false, input: null, output: null, fuel: 0, cookTimer: 0, maxCookTime: 5 };
+  pond = { x: 200, y: 200, r: 90 };
+  farmPlots = [];
+  resources = [];
+  animals = [];
+  arrows = [];
+  zombies = [];
+  bossProjectiles = [];
+  spawnInitial();
+  spawnAnimals();
+}
+
+function spawnAnimals() {
+  animals = [
+    { type: 'cow', x: 600, y: 400, hp: 10, maxHp: 10, speed: 30, state: 'idle', dirX: 1, dirY: 0, timer: 0, fleeing: false },
+    { type: 'cow', x: 900, y: 700, hp: 10, maxHp: 10, speed: 30, state: 'idle', dirX: -1, dirY: 0, timer: 0, fleeing: false },
+    { type: 'pig', x: 400, y: 800, hp: 8, maxHp: 8, speed: 35, state: 'idle', dirX: 0, dirY: 1, timer: 0, fleeing: false },
+    { type: 'pig', x: 1100, y: 300, hp: 8, maxHp: 8, speed: 35, state: 'idle', dirX: 0, dirY: -1, timer: 0, fleeing: false },
+  ];
+}
+
+function saveGame() {
+  try {
+    const data = {
+      player: { x: player.x, y: player.y, hp: player.hp, hunger: player.hunger },
+      inv, tools, day, hasSleptOnce,
+      build, forge, farm, farmPlots, robotHouse, robot, furnace,
+      resources: resources.map(r => ({ type: r.type, x: r.x, y: r.y, hp: r.hp, alive: r.alive })),
+      animals: animals.map(a => ({...a}))
+    };
+    localStorage.setItem('treeHouseSave', JSON.stringify(data));
+  } catch (e) {}
+}
+
+function loadGame() {
+  try {
+    const saved = localStorage.getItem('treeHouseSave');
+    if (!saved) { initWorld(); return; }
+    const data = JSON.parse(saved);
+    player = { ...player, ...data.player, hitCooldown: 0, hungerTimer: 0 };
+    inv = { ...inv, ...data.inv };
+    tools = { ...tools, ...data.tools };
+    day = data.day; hasSleptOnce = data.hasSleptOnce;
+    build = { ...build, ...data.build };
+    forge = { ...forge, ...data.forge };
+    farm = { ...farm, ...data.farm };
+    farmPlots = data.farmPlots;
+    robotHouse = { ...robotHouse, ...data.robotHouse };
+    robot = { ...robot, ...data.robot };
+    furnace = { ...furnace, ...data.furnace };
+    resources = data.resources.map(r => ({ ...r, respawnAt: 0 }));
+    animals = data.animals || [];
+    if (animals.length === 0) spawnAnimals();
+    isNight = false; isSleeping = false; bossSpawnedThisNight = false;
+    nextNightTimer = 300 * 1000; zombies = []; bossProjectiles = [];
+    updateMerchant();
+  } catch (e) { initWorld(); }
+}
+
+resetBtn.onclick = () => { 
+  if (confirm("Точно сбросить весь прогресс?")) { 
+    localStorage.removeItem('treeHouseSave');
+    location.reload(); 
+  } 
+};
+
+function currentNeed() {
+  if (build.level === 1) return { stone: 15, wood: 20, iron: 0, label: '🏠 Дом' };
+  if (build.level === 2) return { stone: 50, wood: 30, iron: 0, label: '🔨 Кузница' };
+  if (build.level === 3) return { stone: 50, wood: 50, iron: 15, label: '🏠 Улучшение' };
+  return null;
+}
+
+function robotHouseNeed() {
+  if (build.level >= 3 && !robotHouse.built) return { stone: 10, wood: 10, iron: 30, label: '🤖 Домик робота' };
+  return null;
+}
+
+function makeRes(type, x, y) { return { type, x, y, hp: HITS_BASE[type], alive: true, respawnAt: 0 }; }
+function spawnInitial() {
+  resources = [
+    makeRes('stone', 300, 300), makeRes('stone', 1300, 250), makeRes('stone', 850, 950),
+    makeRes('tree', 400, 900), makeRes('tree', 1250, 850), makeRes('tree', 750, 200),
+  ];
+}
+function addLevel2Resources() {
+  resources.push(
+    makeRes('iron', 200, 700), makeRes('iron', 1100, 400),
+    makeRes('stone', 500, 500), makeRes('stone', 1000, 700), makeRes('stone', 700, 1100),
+    makeRes('tree', 200, 1000), makeRes('tree', 1400, 600), makeRes('tree', 600, 150),
+  );
+}
+
+function initFarmPlots() {
+  farmPlots = [
+    { x: farm.x - 50, y: farm.y - 50, state: 'grass', type: null, timer: 0, maxTime: 0, watered: false, torch: false },
+    { x: farm.x + 50, y: farm.y - 50, state: 'grass', type: null, timer: 0, maxTime: 0, watered: false, torch: false }
+  ];
+}
+
+function startNight() {
+  if (isNight) return;
+  isNight = true;
+  sleepOverlay.style.opacity = '0';
+  zombieSpawnTimer = 0;
+  bossSpawnedThisNight = false;
+  
+  // Босс на 4-й день и потом каждый 2-й день (4, 6, 8...)
+  if (day >= 4 && day % 2 === 0) {
+    bossSpawnedThisNight = true;
+    spawnBoss();
+  }
+  
+  if (hasSleptOnce) nextNightTimer = 300 * 1000;
+}
+
+function sleep() {
+  if (!isNight || isSleeping) return;
+  const dHouse = Math.hypot(player.x - build.x, player.y - build.y);
+  const dForge = forge.active ? Math.hypot(player.x - forge.x, player.y - forge.y) : 999;
+  
+  if (build.level >= 2 && (dHouse < 160 || dForge < 160)) {
+    isSleeping = true;
+    sleepOverlay.style.opacity = '1';
+    sleepOverlay.textContent = '💤 Спим...';
+    
+    setTimeout(() => {
+      day++; isNight = false; hasSleptOnce = true; isSleeping = false;
+      
+      zombies = zombies.filter(z => z.isBoss); 
+      bossProjectiles = []; // Очищаем снаряды
+      spawnAnimals();
+      
+      for (const r of resources) { r.alive = true; r.hp = HITS_BASE[r.type]; r.respawnAt = 0; }
+      player.hp = player.maxHp; player.hunger = Math.max(0, player.hunger - 10);
+      player.hitCooldown = 0;
+      joy.active = false; joy.dx = 0; joy.dy = 0;
+      btn.pressed = false; btnSleep.pressed = false;
+      touches.clear();
+      sleepOverlay.style.opacity = '0';
+      nextNightTimer = 300 * 1000;
+      updateMerchant();
+      saveGame();
+      hintEl.textContent = '☀️ Новый день!';
+      setTimeout(() => { hintEl.textContent = 'Джойстик — ходьба. ⛏ — использовать'; }, 2000);
+    }, 2000);
+  } else {
+    hintEl.textContent = 'Подойди к дому, чтобы спать!';
+    hintEl.style.color = '#ff4444';
+    setTimeout(() => { hintEl.textContent = 'Джойстик — ходьба. ⛏ — использовать'; hintEl.style.color = '#ffd966'; }, 2000);
+  }
+}
+
+function updateMerchant() {
+  if (day % 2 === 0) { merchant.active = true; merchant.x = build.x + 100; merchant.y = build.y + 150; } 
+  else { merchant.active = false; }
+}
+
+const recipes = [
+  { id:'stonePick', name:'⛏ Каменная кирка', cost:{stone:25, wood:10}, time:0, effect(){ tools.pickaxe='stone'; } },
+  { id:'stoneAxe',  name:'🪓 Каменный топор', cost:{stone:25, wood:10}, time:0, effect(){ tools.axe='stone'; } },
+  { id:'ironPick',  name:'⛏ Железная кирка', cost:{iron:40, wood:10}, time:30, effect(){ tools.pickaxe='iron'; } },
+  { id:'ironAxe',   name:'🪓 Железный топор', cost:{iron:40, wood:10}, time:30, effect(){ tools.axe='iron'; } },
+  { id:'woodSword', name:'🗡 Деревянный меч', desc:'1 урон', cost:{wood:10}, time:0, effect(){ tools.sword='wood'; } },
+  { id:'stoneSword', name:'🗡 Каменный меч', desc:'3 урона', cost:{stone:20, wood:10}, time:0, effect(){ tools.sword='stone'; } },
+  { id:'ironSword', name:'🗡 Железный меч', desc:'7 урона', cost:{iron:25, stone:5, wood:10}, time:0, effect(){ tools.sword='iron'; } },
+];
+let craftingJob = null;
+
+function getCurrentQuest() {
+  const quests = [
+    { text: 'Построить дом', done: build.level > 1 },
+    { text: 'Лечь спать', done: hasSleptOnce },
+    { text: 'Построить кузницу', done: build.level > 2 },
+    { text: 'Улучшить дом до 3 ур.', done: build.level > 3 },
+    { text: 'Построить домик робота', done: robotHouse.built },
+  ];
+  for (let i = 0; i < quests.length; i++) if (!quests[i].done) return { ...quests[i], index: i + 1, total: quests.length };
+  return { text: 'Все задания выполнены! 🏆', done: true, index: 0, total: quests.length };
+}
+
+let hotbarSignature = '';
+function getHotbarSignature() {
+  return `${inv.hoe}|${inv.wateringCan}|${inv.seedPotato}|${inv.seedBerry}|${inv.potato}|${inv.berry}|${inv.torch}|${inv.meat}|${inv.cookedMeat}|${inv.fish}|${inv.cookedFish}|${inv.bow}|${inv.fishingRod}|${activeItem}`;
+}
+function renderHotbar() {
+  const sig = getHotbarSignature();
+  if (sig === hotbarSignature) return;
+  hotbarSignature = sig;
+  hotbarEl.innerHTML = '';
+  const items = [
+    { id: 'hoe', icon: '⛏️', count: inv.hoe }, { id: 'wateringCan', icon: '🚿', count: inv.wateringCan },
+    { id: 'seedPotato', icon: '🌰', count: inv.seedPotato }, { id: 'seedBerry', icon: '🫐', count: inv.seedBerry },
+    { id: 'potato', icon: '🥔', count: inv.potato }, { id: 'berry', icon: '🍓', count: inv.berry },
+    { id: 'torch', icon: '🕯️', count: inv.torch },
+    { id: 'meat', icon: '🥩', count: inv.meat }, { id: 'cookedMeat', icon: '🍖', count: inv.cookedMeat },
+    { id: 'fish', icon: '🐟', count: inv.fish }, { id: 'cookedFish', icon: '🍣', count: inv.cookedFish },
+    { id: 'bow', icon: '🏹', count: inv.bow }, { id: 'fishingRod', icon: '🎣', count: inv.fishingRod },
+    { id: 'workbench', icon: '🛠️', count: 1 }
+  ];
+  for (const item of items) {
+    if (item.count <= 0) continue;
+    const div = document.createElement('div');
+    div.className = 'slot' + (activeItem === item.id ? ' active' : '');
+    div.innerHTML = `${item.icon}${item.count > 1 ? `<span class="slot-count">${item.count}</span>` : ''}`;
+    div.onclick = () => { 
+      if (item.id === 'potato' || item.id === 'berry' || item.id === 'meat' || item.id === 'cookedMeat' || item.id === 'fish' || item.id === 'cookedFish') { eatItem(item.id); }
+      else if (item.id === 'workbench') { openWorkbench(); }
+      else { activeItem = (activeItem === item.id) ? null : item.id; }
+      renderHotbar(); 
+    };
+    hotbarEl.appendChild(div);
+  }
+}
+
+function eatItem(item) {
+  if (item === 'potato' && inv.potato > 0) { inv.potato--; player.hunger = Math.min(100, player.hunger + 15); player.hp = Math.min(player.maxHp, player.hp + 3); }
+  if (item === 'berry' && inv.berry > 0) { inv.berry--; player.hunger = Math.min(100, player.hunger + 5); player.hp = Math.min(player.maxHp, player.hp + 3); }
+  if (item === 'meat' && inv.meat > 0) { inv.meat--; player.hunger = Math.min(100, player.hunger + 10); player.hp = Math.min(player.maxHp, player.hp + 2); }
+  if (item === 'cookedMeat' && inv.cookedMeat > 0) { inv.cookedMeat--; player.hunger = Math.min(100, player.hunger + 30); player.hp = Math.min(player.maxHp, player.hp + 8); }
+  if (item === 'fish' && inv.fish > 0) { inv.fish--; player.hunger = Math.min(100, player.hunger + 8); player.hp = Math.min(player.maxHp, player.hp + 1); }
+  if (item === 'cookedFish' && inv.cookedFish > 0) { inv.cookedFish--; player.hunger = Math.min(100, player.hunger + 20); player.hp = Math.min(player.maxHp, player.hp + 5); }
+  activeItem = null;
+  saveGame();
+}
+
+function updateHUD() {
+  invDisplay.innerHTML = `🪨 ${inv.stone}/${INV_MAX} 🪵 ${inv.wood}/${INV_MAX} ⚙️ ${inv.iron}/${INV_MAX}`;
+  const q = getCurrentQuest();
+  if (q.index > 0) { questDisplay.innerHTML = `📋 Задание ${q.index}/${q.total}:<br>⬜ ${q.text}`; questDisplay.style.color = '#ffd966'; }
+  else { questDisplay.innerHTML = `🏆 ${q.text}`; questDisplay.style.color = '#8bc34a'; }
+  dayCounterEl.innerHTML = `${isNight ? '🌙 Ночь' : '☀️ День'}: ${day}`;
+  hpText.textContent = `${Math.max(0, Math.ceil(player.hp))}/${player.maxHp}`;
+  hpBarFill.style.width = `${Math.max(0, (player.hp/player.maxHp)*100)}%`;
+  hungerText.textContent = `${Math.max(0, Math.floor(player.hunger))}%`;
+  hungerBarFill.style.width = `${Math.max(0, player.hunger)}%`;
+  coinText.textContent = inv.coin;
+}
+
+const joy = { active:false, baseX:100, baseY:0, dx:0, dy:0, radius:60 };
+const btn = { pressed:false, x:0, y:0, r:45, cooldown:0 };
+const btnSleep = { pressed:false, x:0, y:0, r:30 };
+
+function updateLayout() {
+  joy.baseX = 100; joy.baseY = H - 100;
+  btn.x = W - 80; btn.y = H - 80;
+  btnSleep.x = W - 80; btnSleep.y = H - 160;
+}
+updateLayout(); window.addEventListener('resize', updateLayout);
+
+const touches = new Map();
+function dist(x1,y1,x2,y2){return Math.hypot(x1-x2,y1-y2);}
+
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  if (craftMenu.classList.contains('open') || tradeMenu.classList.contains('open') || workbenchMenu.classList.contains('open') || furnaceMenu.classList.contains('open') || isSleeping) return;
+  for (const t of e.changedTouches) {
+    const x = t.clientX, y = t.clientY;
+    if (dist(x,y,btnSleep.x,btnSleep.y) < btnSleep.r + 20) { btnSleep.pressed = true; sleep(); touches.set(t.identifier, 'sleep'); }
+    else if (dist(x,y,btn.x,btn.y) < btn.r + 25) { btn.pressed = true; touches.set(t.identifier, 'btn'); }
+    else if (x < W/2) { joy.active = true; joy.baseX = x; joy.baseY = y; joy.dx = 0; joy.dy = 0; touches.set(t.identifier, 'joy'); }
+  }
+}, {passive:false});
+
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (touches.get(t.identifier) === 'joy') {
+      let dx = t.clientX - joy.baseX, dy = t.clientY - joy.baseY;
+      const len = Math.hypot(dx,dy);
+      if (len > joy.radius) { dx = dx/len*joy.radius; dy = dy/len*joy.radius; }
+      joy.dx = dx; joy.dy = dy;
+    }
+  }
+}, {passive:false});
+
+function endTouch(e) {
+  for (const t of e.changedTouches) {
+    const role = touches.get(t.identifier);
+    if (role === 'joy') { joy.active = false; joy.dx = 0; joy.dy = 0; }
+    else if (role === 'btn') { btn.pressed = false; }
+    else if (role === 'sleep') { btnSleep.pressed = false; }
+    touches.delete(t.identifier);
+  }
+}
+canvas.addEventListener('touchend', endTouch);
+canvas.addEventListener('touchcancel', endTouch);
+
+const keys = {};
+window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+// ===== МЕНЮ КУЗНИЦЫ =====
+let activeCraftTab = 'craft';
+function renderMenu() {
+  contentEl.innerHTML = '';
+  const tabsDiv = document.createElement('div');
+  tabsDiv.className = 'tabs';
+
+  const tab1 = document.createElement('button');
+  tab1.textContent = '🔨 Крафт';
+  tab1.className = activeCraftTab === 'craft' ? 'active' : '';
+  tab1.onclick = () => { activeCraftTab = 'craft'; renderMenu(); };
+
+  const tab2 = document.createElement('button');
+  tab2.textContent = '📦 Склад';
+  tab2.className = activeCraftTab === 'store' ? 'active' : '';
+  tab2.onclick = () => { activeCraftTab = 'store'; renderMenu(); };
+
+  tabsDiv.appendChild(tab1);
+  tabsDiv.appendChild(tab2);
+  contentEl.appendChild(tabsDiv);
+
+  if (activeCraftTab === 'craft') {
+    const storeInfo = document.createElement('div');
+    storeInfo.style.cssText = 'margin-bottom:8px;color:#ffd966;font-size:12px;';
+    storeInfo.textContent = `На складе: 🪨${forge.storage.stone} 🪵${forge.storage.wood} ⚙️${forge.storage.iron}`;
+    contentEl.appendChild(storeInfo);
+
+    for (const r of recipes) {
+      const div = document.createElement('div'); div.className = 'recipe';
+      const costStr = Object.entries(r.cost).map(([k,v]) => `${v}${iconOf(k)}`).join(' ');
+      div.innerHTML = `<span>${r.name}${r.desc?' ('+r.desc+')':''}<br><small>${costStr}${r.time?` · ${r.time}с`:''}</small></span>`;
+      const btnEl = document.createElement('button'); btnEl.textContent = 'Создать';
+      btnEl.disabled = !canAfford(r.cost) || !!craftingJob;
+      btnEl.onclick = () => {
+        if (!canAfford(r.cost) || craftingJob) return;
+        payFromAll(r.cost);
+        if (r.time > 0) craftingJob = { recipe: r, endAt: performance.now() + r.time*1000 };
+        else r.effect();
+        saveGame();
+        renderMenu();
+      };
+      div.appendChild(btnEl); contentEl.appendChild(div);
+    }
+  } else {
+    const infoText = document.createElement('div');
+    infoText.style.cssText = 'margin-bottom:10px; font-size:12px; color:#aaa; text-align:center;';
+    infoText.innerHTML = 'Сдавай ресурсы на склад, чтобы тратить их на крафт.';
+    contentEl.appendChild(infoText);
+
+    for (const k of ['stone','wood','iron']) {
+      const row = document.createElement('div'); row.className = 'storeRow';
+      row.innerHTML = `<span>${iconOf(k)} В руках: ${inv[k]}/${INV_MAX}<br><small>На складе: ${forge.storage[k]}</small></span>`;
+      
+      const btnPut = document.createElement('button'); btnPut.textContent = '⬇️ Сдать всё';
+      btnPut.disabled = inv[k] <= 0;
+      btnPut.onclick = () => { forge.storage[k] += inv[k]; inv[k] = 0; saveGame(); renderMenu(); };
+      
+      const btnTake = document.createElement('button'); btnTake.textContent = '⬆️ Взять';
+      btnTake.disabled = forge.storage[k] <= 0 || inv[k] >= INV_MAX;
+      btnTake.onclick = () => {
+        const space = INV_MAX - inv[k];
+        const take = Math.min(space, forge.storage[k]);
+        inv[k] += take; forge.storage[k] -= take;
+        saveGame(); renderMenu();
+      };
+      
+      const btnDiv = document.createElement('div');
+      btnDiv.style.display = 'flex';
+      btnDiv.style.gap = '5px';
+      btnDiv.appendChild(btnPut); 
+      btnDiv.appendChild(btnTake); 
+      row.appendChild(btnDiv); 
+      contentEl.appendChild(row);
+    }
+  }
+}
+function openCraft() { activeCraftTab = 'craft'; renderMenu(); craftMenu.classList.add('open'); }
+
+// ===== МЕНЮ ТОРГОВЦА =====
+let activeTradeTab = 'buy';
+function renderTrade() {
+  tradeContent.innerHTML = '';
+  const tabsDiv = document.createElement('div');
+  tabsDiv.className = 'tabs';
+
+  const tab1 = document.createElement('button');
+  tab1.textContent = 'Купить';
+  tab1.className = activeTradeTab === 'buy' ? 'active' : '';
+  tab1.onclick = () => { activeTradeTab = 'buy'; renderTrade(); };
+
+  const tab2 = document.createElement('button');
+  tab2.textContent = 'Продать';
+  tab2.className = activeTradeTab === 'sell' ? 'active' : '';
+  tab2.onclick = () => { activeTradeTab = 'sell'; renderTrade(); };
+
+  tabsDiv.appendChild(tab1);
+  tabsDiv.appendChild(tab2);
+  tradeContent.appendChild(tabsDiv);
+
+  if (activeTradeTab === 'buy') {
+    const goods = [
+      { name: '⛏ Мотыга', cost: 15, action: () => { inv.hoe++; } },
+      { name: '🥔 Семена картошки (1)', cost: 5, action: () => { inv.seedPotato++; } },
+      { name: '🫐 Семена ягод (1)', cost: 20, action: () => { inv.seedBerry++; } },
+      { name: '🕯️ Факел (1)', cost: 5, action: () => { if (inv.torch < 5) inv.torch++; } },
+      { name: '🚿 Лейка', cost: 20, action: () => { inv.wateringCan = 1; } }
+    ];
+    for (const g of goods) {
+      const div = document.createElement('div'); div.className = 'recipe';
+      div.innerHTML = `<span>${g.name}</span>`;
+      const btn = document.createElement('button'); btn.textContent = `${g.cost} 🪙`;
+      btn.disabled = inv.coin < g.cost || (g.name.includes('Факел') && inv.torch >= 5);
+      btn.onclick = () => { inv.coin -= g.cost; g.action(); saveGame(); renderTrade(); };
+      div.appendChild(btn); tradeContent.appendChild(div);
+    }
+  } else {
+    const rates = [
+      { key: 'wood', rate: 1, text: '5 🪵 = 5 🪙', needed: 5 },
+      { key: 'stone', rate: 2, text: '5 🪨 = 10 🪙', needed: 5 },
+      { key: 'iron', rate: 4, text: '10 ⚙️ = 40 🪙', needed: 10 }
+    ];
+    for (const r of rates) {
+      const div = document.createElement('div'); div.className = 'recipe';
+      div.innerHTML = `<span>${r.text}<br><small>В руках: ${inv[r.key]}</small></span>`;
+      const btn = document.createElement('button'); btn.textContent = 'Продать';
+      btn.disabled = inv[r.key] < r.needed;
+      btn.onclick = () => { inv[r.key] -= r.needed; inv.coin += r.needed * r.rate; saveGame(); renderTrade(); };
+      div.appendChild(btn); tradeContent.appendChild(div);
+    }
+  }
+}
+function openTrade() { activeTradeTab = 'buy'; renderTrade(); tradeMenu.classList.add('open'); }
+
+const workbenchRecipes = [
+  { id: 'furnace', name: 'Печка', icon: '🔥', cost: { stone: 30 } },
+  { id: 'bow', name: 'Лук', icon: '🏹', cost: { wood: 30, stone: 5 } },
+  { id: 'fishingRod', name: 'Удочка', icon: '🎣', cost: { stone: 15, wood: 15, iron: 3 } }
+];
+let selectedRecipe = null;
+
+function openWorkbench() { workbenchMenu.classList.add('open'); selectedRecipe = null; renderWorkbench(); }
+function closeWorkbench() { workbenchMenu.classList.remove('open'); }
+closeWorkbenchBtn.onclick = closeWorkbench;
+
+function renderWorkbench() {
+  craftListEl.innerHTML = '';
+  workbenchRecipes.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'craft-item' + (selectedRecipe && selectedRecipe.id === r.id ? ' active' : '');
+    div.innerHTML = `<span style="font-size:20px">${r.icon}</span> <span>${r.name}</span>`;
+    div.onclick = () => { selectedRecipe = r; renderWorkbench(); };
+    craftListEl.appendChild(div);
+  });
+
+  if (selectedRecipe) {
+    craftInfoEl.style.display = 'flex';
+    let canCraft = true;
+    let costHtml = '';
+    
+    for (const [k, v] of Object.entries(selectedRecipe.cost)) {
+      const total = inv[k] + forge.storage[k]; 
+      const has = total >= v;
+      if (!has) canCraft = false;
+      costHtml += `<div style="color:${has ? '#8bc34a' : '#ff4444'}">${v}x ${iconOf(k)} (в руках: ${inv[k]}, склад: ${forge.storage[k]})</div>`;
+    }
+    
+    if (inv[selectedRecipe.id] > 0 || (selectedRecipe.id === 'furnace' && furnace.built)) canCraft = false;
+
+    craftInfoEl.innerHTML = `
+      <div style="font-size:48px; margin-bottom:10px;">${selectedRecipe.icon}</div>
+      <h3>${selectedRecipe.name}</h3>
+      <div style="margin:10px 0;">${costHtml}</div>
+      <button class="craft-btn ${canCraft ? 'green' : 'gray'}" id="doCraftBtn">Создать</button>
+    `;
+    
+    document.getElementById('doCraftBtn').onclick = () => {
+      if (!canCraft) return;
+      
+      for (const [k, v] of Object.entries(selectedRecipe.cost)) {
+        let need = v;
+        const takeInv = Math.min(inv[k], need);
+        inv[k] -= takeInv;
+        need -= takeInv;
+        if (need > 0) forge.storage[k] -= need;
+      }
+
+      if (selectedRecipe.id === 'furnace') { 
+        furnace.built = true; 
+        furnace.x = robotHouse.x + 80; 
+        furnace.y = robotHouse.y + 50; 
+      }
+      else if (selectedRecipe.id === 'bow') inv.bow++;
+      else if (selectedRecipe.id === 'fishingRod') inv.fishingRod++;
+      
+      saveGame();
+      renderWorkbench();
+    };
+  } else {
+    craftInfoEl.style.display = 'none';
+  }
+}
+
+function openFurnace() { furnaceMenu.classList.add('open'); renderFurnace(); }
+function closeFurnace() { furnaceMenu.classList.remove('open'); }
+closeFurnaceBtn.onclick = closeFurnace;
+
+function renderFurnace() {
+  furnaceSlotInput.innerHTML = furnace.input ? `<span>${furnace.input === 'meat' ? '🥩' : furnace.input === 'fish' ? '🐟' : '🥔'}</span>` : '+';
+  furnaceSlotOutput.innerHTML = furnace.output ? `<span>${furnace.output === 'cookedMeat' ? '🍖' : furnace.output === 'cookedFish' ? '🍣' : '🍟'}</span>` : '+';
+  furnaceSlotFuel.innerHTML = `<span>🪵</span><span class="slot-count">${inv.wood}</span>`;
+  furnaceStatus.textContent = `Топливо: ${Math.floor(inv.wood)} 🪵`;
+
+  furnaceSlotInput.onclick = () => {
+    if (furnace.output) return;
+    if (!furnace.input) {
+      if (inv.meat > 0) { furnace.input = 'meat'; inv.meat--; }
+      else if (inv.fish > 0) { furnace.input = 'fish'; inv.fish--; }
+      else if (inv.potato > 0) { furnace.input = 'potato'; inv.potato--; }
+    } else {
+      inv[furnace.input]++;
+      furnace.input = null;
+    }
+    saveGame(); renderFurnace();
+  };
+
+  furnaceSlotFuel.onclick = () => {
+    if (inv.wood > 0) { inv.wood--; furnace.fuel++; saveGame(); renderFurnace(); }
+  };
+
+  furnaceSlotOutput.onclick = () => {
+    if (furnace.output) {
+      inv[furnace.output]++;
+      furnace.output = null;
+      saveGame(); renderFurnace();
+    }
+  };
+}
+
+function updateFurnace(dt) {
+  if (!furnace.built) return;
+  if (furnace.input && !furnace.output && furnace.fuel > 0) {
+    furnace.cookTimer += dt;
+    if (furnace.cookTimer >= furnace.maxCookTime) {
+      furnace.cookTimer = 0;
+      furnace.fuel--;
+      if (furnace.input === 'meat') furnace.output = 'cookedMeat';
+      else if (furnace.input === 'fish') furnace.output = 'cookedFish';
+      else if (furnace.input === 'potato') furnace.output = 'potato';
+      furnace.input = null;
+      if (furnaceMenu.classList.contains('open')) renderFurnace();
+      saveGame();
+    }
+  }
+}
+
+function canAfford(cost) {
+  let totalStone = inv.stone + forge.storage.stone;
+  let totalWood = inv.wood + forge.storage.wood;
+  let totalIron = inv.iron + forge.storage.iron;
+  if ((cost.stone||0) > totalStone) return false;
+  if ((cost.wood||0) > totalWood) return false;
+  if ((cost.iron||0) > totalIron) return false;
+  return true;
+}
+
+function payFromAll(cost) {
+  let needStone = cost.stone || 0;
+  let needWood = cost.wood || 0;
+  let needIron = cost.iron || 0;
+  
+  let takeStoneInv = Math.min(inv.stone, needStone); inv.stone -= takeStoneInv; needStone -= takeStoneInv;
+  if (needStone > 0) forge.storage.stone -= needStone;
+  
+  let takeWoodInv = Math.min(inv.wood, needWood); inv.wood -= takeWoodInv; needWood -= takeWoodInv;
+  if (needWood > 0) forge.storage.wood -= needWood;
+  
+  let takeIronInv = Math.min(inv.iron, needIron); inv.iron -= takeIronInv; needIron -= takeIronInv;
+  if (needIron > 0) forge.storage.iron -= needIron;
+}
+
+// ===== ЧАСТЬ 2 =====
+  // ===== ЛОГИКА =====
+let lastTime = performance.now();
+let saveTimer = 0;
+
+function update(dt) {
+  if (isSleeping) { updateHUD(); return; }
+
+  saveTimer += dt;
+  if (saveTimer > 60) { saveGame(); saveTimer = 0; }
+
+  player.hungerTimer += dt;
+  if (player.hungerTimer >= 20) { player.hunger -= 1; player.hungerTimer = 0; }
+  if (player.hunger <= 0) { player.hunger = 0; player.hp -= 2 * dt; }
+  
+  if (player.hp <= 0) {
+    player.hp = player.maxHp; player.hunger = 100;
+    player.x = build.x; player.y = build.y + 80;
+    inv.stone = Math.floor(inv.stone / 2); inv.wood = Math.floor(inv.wood / 2);
+    inv.iron = Math.floor(inv.iron / 2); inv.coin = Math.floor(inv.coin / 2);
+    hintEl.textContent = '💀 Ты умер! Потерял половину ресурсов.';
+    hintEl.style.color = '#ff4444';
+    setTimeout(() => { hintEl.textContent = 'Джойстик — ходьба. ⛏ — использовать'; hintEl.style.color = '#ffd966'; }, 3000);
+    saveGame();
+  }
+
+  if (!isNight && hasSleptOnce) {
+    nextNightTimer -= dt * 1000;
+    if (nextNightTimer <= 0) startNight();
+  }
+  
+  if (isNight) {
+    zombieSpawnTimer -= dt * 1000;
+    if (zombieSpawnTimer <= 0) { spawnZombie(); zombieSpawnTimer = 10000; }
+  }
+
+  // ЛОГИКА ШАРИКОВ БОССА
+  for (let i = bossProjectiles.length - 1; i >= 0; i--) {
+    const p = bossProjectiles[i];
+    p.timer -= dt;
+    if (p.timer <= 0) {
+      // Шарик упал
+      if (dist(p.targetX, p.targetY, player.x, player.y) < p.radius + player.r) {
+        player.hp -= 15; // Урон 15
+        hintEl.textContent = '💥 Босс попал в тебя! (-15 HP)';
+        hintEl.style.color = '#ff4444';
+        setTimeout(() => { hintEl.textContent = 'Джойстик — ходьба. ⛏ — использовать'; hintEl.style.color = '#ffd966'; }, 1500);
+      }
+      bossProjectiles.splice(i, 1);
+    }
+  }
+
+  if (craftMenu.classList.contains('open') || tradeMenu.classList.contains('open') || workbenchMenu.classList.contains('open') || furnaceMenu.classList.contains('open')) { updateHUD(); return; }
+
+  if (isFishing) {
+    fishingTimer -= dt;
+    if (fishingTimer <= 0) {
+      isFishing = false;
+      inv.fish++;
+      hintEl.textContent = '🐟 Ты поймал рыбу!';
+      hintEl.style.color = '#8bc34a';
+      setTimeout(() => { hintEl.textContent = 'Джойстик — ходьба. ⛏ — использовать'; hintEl.style.color = '#ffd966'; }, 2000);
+      saveGame();
+    }
+    updateHUD();
+    return;
+  }
+
+  let mx = 0, my = 0;
+  if (joy.active) { mx = joy.dx/joy.radius; my = joy.dy/joy.radius; }
+  if (keys['w']||keys['arrowup']) my -= 1;
+  if (keys['s']||keys['arrowdown']) my += 1;
+  if (keys['a']||keys['arrowleft']) mx -= 1;
+  if (keys['d']||keys['arrowright']) mx += 1;
+  if (keys[' ']) btn.pressed = true;
+
+  const len = Math.hypot(mx,my);
+  if (len > 1) { mx/=len; my/=len; }
+
+  player.x += mx * player.speed * dt;
+  player.y += my * player.speed * dt;
+  player.x = Math.max(player.r, Math.min(MAP_W - player.r, player.x));
+  player.y = Math.max(player.r, Math.min(MAP_H - player.r, player.y));
+
+  cam.x = Math.max(0, Math.min(MAP_W - W, player.x - W/2));
+  cam.y = Math.max(0, Math.min(MAP_H - H, player.y - H/2));
+  if (MAP_W < W) cam.x = (MAP_W - W)/2;
+  if (MAP_H < H) cam.y = (MAP_H - H)/2;
+
+  if (player.hitCooldown > 0) player.hitCooldown -= dt;
+
+  for (const a of animals) {
+    if (a.fleeing) {
+      const dx = a.x - player.x; const dy = a.y - player.y; const d = Math.hypot(dx, dy);
+      if (d < 200) { 
+        a.x += (dx / d) * a.speed * 2 * dt;
+        a.y += (dy / d) * a.speed * 2 * dt;
+      } else {
+        a.fleeing = false;
+      }
+    } else {
+      a.timer -= dt;
+      if (a.timer <= 0) {
+        a.timer = 2 + Math.random() * 3;
+        if (Math.random() < 0.5) {
+          const angle = Math.random() * Math.PI * 2;
+          a.dirX = Math.cos(angle); a.dirY = Math.sin(angle);
+          a.state = 'walking';
+        } else {
+          a.state = 'idle';
+          a.dirX = 0; a.dirY = 0;
+        }
+      }
+      a.x += a.dirX * a.speed * dt;
+      a.y += a.dirY * a.speed * dt;
+      a.x = Math.max(20, Math.min(MAP_W - 20, a.x));
+      a.y = Math.max(20, Math.min(MAP_H - 20, a.y));
+    }
+  }
+
+  if (robot.active) {
+    if (robot.state === 'idle') {
+      let bestRes = null, bestDist = Infinity;
+      for (const r of resources) {
+        if (!r.alive || (r.type !== 'stone' && r.type !== 'tree')) continue;
+        const d = dist(robot.x, robot.y, r.x, r.y);
+        if (d < bestDist) { bestDist = d; bestRes = r; }
+      }
+      if (bestRes) { robot.target = bestRes; robot.state = 'moving'; } 
+      else if (robot.invWood > 0 || robot.invStone > 0) { robot.state = 'returning'; }
+    } 
+    else if (robot.state === 'moving') {
+      if (!robot.target || !robot.target.alive) { robot.state = 'idle'; } 
+      else {
+        const d = dist(robot.x, robot.y, robot.target.x, robot.target.y);
+        if (d > 30) {
+          const dx = robot.target.x - robot.x; const dy = robot.target.y - robot.y;
+          robot.x += (dx / d) * robot.speed * dt;
+          robot.y += (dy / d) * robot.speed * dt;
+        } else {
+          robot.state = 'mining'; robot.hitTimer = 0.5;
+        }
+      }
+    } 
+    else if (robot.state === 'mining') {
+      robot.hitTimer -= dt;
+      if (robot.hitTimer <= 0) {
+        if (robot.target && robot.target.alive) {
+          robot.target.hp -= 1;
+          if (robot.target.hp <= 0) {
+            robot.target.alive = false; 
+            robot.target.respawnAt = performance.now()/1000 + RESPAWN_TIME;
+            if (robot.target.type === 'tree') robot.invWood += 1 + Math.floor(Math.random() * 3); 
+            else robot.invStone += 1 + Math.floor(Math.random() * 3);
+          }
+        }
+        if (robot.invWood >= 5 || robot.invStone >= 5) robot.state = 'returning';
+        else robot.state = 'idle';
+      }
+    } 
+    else if (robot.state === 'returning') {
+      const d = dist(robot.x, robot.y, forge.x, forge.y);
+      if (d > 40) {
+        const dx = forge.x - robot.x; const dy = forge.y - robot.y;
+        robot.x += (dx / d) * robot.speed * dt;
+        robot.y += (dy / d) * robot.speed * dt;
+      } else {
+        forge.storage.wood += robot.invWood;
+        forge.storage.stone += robot.invStone;
+        robot.invWood = 0; robot.invStone = 0;
+        robot.state = 'idle';
+      }
+    }
+  }
+
+  for (let i = arrows.length - 1; i >= 0; i--) {
+    const a = arrows[i];
+    a.x += a.vx * dt;
+    a.y += a.vy * dt;
+    a.life -= dt;
+    if (a.life <= 0) { arrows.splice(i, 1); continue; }
+    for (const z of zombies) {
+      if (dist(a.x, a.y, z.x, z.y) < z.r + 5) {
+        z.hp -= 3;
+        if (z.hp <= 0) {
+          if (z.isBoss) { inv.coin += 100; } 
+          else { inv.coin += 1 + Math.floor(Math.random() * 10); }
+          zombies = zombies.filter(zz => zz !== z);
+          saveGame();
+        }
+        arrows.splice(i, 1);
+        break;
+      }
+    }
+  }
+
+  for (const z of zombies) {
+    const dx = player.x - z.x; const dy = player.y - z.y; const d = Math.hypot(dx, dy);
+    
+    // Обновление таймера атаки босса
+    if (z.isBoss) {
+      z.attackTimer -= dt;
+      if (z.attackTimer <= 0) {
+        z.attackTimer = z.attackCooldown;
+        // Спавн 3 шариков
+        for (let i = 0; i < 3; i++) {
+          // Кидаем вокруг игрока (со смещением)
+          const offsetX = (Math.random() - 0.5) * 300;
+          const offsetY = (Math.random() - 0.5) * 300;
+          bossProjectiles.push({
+            targetX: player.x + offsetX,
+            targetY: player.y + offsetY,
+            radius: 140, // 10x от игрока
+            timer: 1.0, // 1 секунда до падения
+            maxTimer: 1.0
+          });
+        }
+      }
+    }
+
+    if (d > player.r + z.r - 5) {
+      z.x += (dx / d) * z.speed * dt; z.y += (dy / d) * z.speed * dt;
+    } else {
+      if (z.hitCooldown > 0) z.hitCooldown -= dt;
+      if (z.hitCooldown <= 0) { player.hp -= z.dmg; z.hitCooldown = 1.5; }
+    }
+  }
+
+  for (const p of farmPlots) {
+    if (p.state === 'planted') {
+      p.timer += dt;
+      if (p.timer >= p.maxTime) p.state = 'ready';
+    }
+  }
+
+  updateFurnace(dt);
+
+  if (btn.cooldown > 0) btn.cooldown -= dt;
+  if (btn.pressed && btn.cooldown <= 0) { interact(); btn.cooldown = 0.35; }
+
+  const now = performance.now()/1000;
+  for (const r of resources) if (!r.alive && now >= r.respawnAt) { r.alive = true; r.hp = HITS_BASE[r.type]; }
+
+  if (craftingJob && performance.now() >= craftingJob.endAt) {
+    craftingJob.recipe.effect(); craftingJob = null;
+  }
+  
+  renderHotbar(); 
+  updateHUD();
+}
+
+function interact() {
+  if (inv.fishingRod > 0 && activeItem === 'fishingRod' && dist(player.x, player.y, pond.x, pond.y) < pond.r + 40) {
+    isFishing = true; fishingTimer = 5;
+    hintEl.textContent = '🎣 Ловим рыбу...'; hintEl.style.color = '#42a5f5';
+    return;
+  }
+
+  if (furnace.built && dist(player.x, player.y, furnace.x, furnace.y) < 60) { openFurnace(); return; }
+
+  if (farm.built) {
+    for (const p of farmPlots) {
+      if (dist(player.x, player.y, p.x, p.y) < 35) {
+        if (activeItem === 'torch' && !p.torch) { p.torch = true; inv.torch--; activeItem = null; if (p.state === 'planted') p.maxTime = p.maxTime / 2; saveGame(); return; }
+        if (activeItem === 'hoe' && p.state === 'grass') { p.state = 'tilled'; saveGame(); return; }
+        if (activeItem === 'seedPotato' && p.state === 'tilled') { p.state = 'planted'; p.type = 'potato'; p.timer = 0; p.maxTime = (p.watered ? 120 : 300) / (p.torch ? 2 : 1); inv.seedPotato--; activeItem = null; saveGame(); return; }
+        if (activeItem === 'seedBerry' && p.state === 'tilled') { p.state = 'planted'; p.type = 'berry'; p.timer = 0; p.maxTime = (p.watered ? 300 : 600) / (p.torch ? 2 : 1); inv.seedBerry--; activeItem = null; saveGame(); return; }
+        if (activeItem === 'wateringCan' && p.state === 'planted' && !p.watered) { p.watered = true; p.maxTime = p.maxTime / 2; saveGame(); return; }
+        if (p.state === 'ready') { p.state = 'tilled'; if (p.type === 'potato') inv.potato++; else inv.berry += 10; p.type = null; p.watered = false; saveGame(); return; }
+      }
+    }
+  }
+
+  if (forge.active && dist(player.x, player.y, forge.x, forge.y) < forge.r + 30) { openCraft(); return; }
+  if (merchant.active && dist(player.x, player.y, merchant.x, merchant.y) < 50) { openTrade(); return; }
+
+  const rNeed = robotHouseNeed();
+  if (rNeed && dist(player.x, player.y, robotHouse.x, robotHouse.y) < 80) {
+    if (inv.stone > 0 && robotHouse.stone < rNeed.stone) { const give = Math.min(inv.stone, rNeed.stone - robotHouse.stone); robotHouse.stone += give; inv.stone -= give; }
+    if (inv.wood > 0 && robotHouse.wood < rNeed.wood) { const give = Math.min(inv.wood, rNeed.wood - robotHouse.wood); robotHouse.wood += give; inv.wood -= give; }
+    if (inv.iron > 0 && robotHouse.iron < rNeed.iron) { const give = Math.min(inv.iron, rNeed.iron - robotHouse.iron); robotHouse.iron += give; inv.iron -= give; }
+    if (robotHouse.stone >= rNeed.stone && robotHouse.wood >= rNeed.wood && robotHouse.iron >= rNeed.iron) {
+      robotHouse.built = true; robot.active = true; robot.x = robotHouse.x + 30; robot.y = robotHouse.y;
+      saveGame();
+    }
+    return;
+  }
+
+  const hitRange = 55;
+  
+  if (activeItem === 'bow') {
+    const targetZombie = zombies.find(z => dist(player.x, player.y, z.x, z.y) < 300);
+    if (targetZombie) {
+      const angle = Math.atan2(targetZombie.y - player.y, targetZombie.x - player.x);
+      arrows.push({ x: player.x, y: player.y, vx: Math.cos(angle) * 600, vy: Math.sin(angle) * 600, life: 1 });
+    }
+    return;
+  }
+
+  let bestZombie = null, bestZombieD = Infinity;
+  for (const z of zombies) {
+    const d = dist(player.x, player.y, z.x, z.y);
+    if (d < hitRange + 20 && d < bestZombieD) { bestZombieD = d; bestZombie = z; }
+  }
+  if (bestZombie) {
+    if (!tools.sword) return;
+    bestZombie.hp -= SWORD_DMG[tools.sword];
+    if (bestZombie.hp <= 0) {
+      if (bestZombie.isBoss) {
+        inv.coin += 100;
+        bossProjectiles = []; // Убираем его снаряды
+      }
+      else inv.coin += 1 + Math.floor(Math.random() * 10);
+      zombies = zombies.filter(z => z !== bestZombie);
+      saveGame();
+    }
+    return;
+  }
+
+  let bestAnimal = null, bestAnimalD = Infinity;
+  for (const a of animals) {
+    const d = dist(player.x, player.y, a.x, a.y);
+    if (d < hitRange + 30 && d < bestAnimalD) { bestAnimalD = d; bestAnimal = a; }
+  }
+  if (bestAnimal && tools.sword) {
+    bestAnimal.hp -= SWORD_DMG[tools.sword];
+    bestAnimal.fleeing = true;
+    if (bestAnimal.hp <= 0) {
+      inv.meat += 1 + Math.floor(Math.random() * 3);
+      animals = animals.filter(a => a !== bestAnimal);
+      saveGame();
+    }
+    return;
+  }
+
+  const need = currentNeed();
+  const insideBuild = Math.abs(player.x - build.x) < build.w/2 && Math.abs(player.y - build.y) < build.h/2;
+  if (insideBuild && need) {
+    if (inv.stone > 0 && build.stone < need.stone) { const give = Math.min(inv.stone, need.stone - build.stone); build.stone += give; inv.stone -= give; }
+    if (inv.wood > 0 && build.wood < need.wood) { const give = Math.min(inv.wood, need.wood - build.wood); build.wood += give; inv.wood -= give; }
+    if (inv.iron > 0 && build.iron < need.iron) { const give = Math.min(inv.iron, need.iron - build.iron); build.iron += give; inv.iron -= give; }
+    if (build.stone >= need.stone && build.wood >= need.wood && build.iron >= need.iron) {
+      build.level++; build.stone = 0; build.wood = 0; build.iron = 0;
+      if (build.level === 2) { addLevel2Resources(); startNight(); }
+      if (build.level === 3) forge.active = true;
+      saveGame();
+    }
+    return;
+  }
+
+  if (!farm.built && dist(player.x, player.y, farm.x, farm.y) < 60) {
+    if (inv.stone > 0 && farm.stone < 5) { farm.stone += inv.stone; inv.stone = 0; }
+    if (inv.wood > 0 && farm.wood < 15) { farm.wood += inv.wood; inv.wood = 0; }
+    if (farm.stone >= 5 && farm.wood >= 15) { farm.built = true; initFarmPlots(); saveGame(); }
+    return;
+  }
+
+  let best = null, bestD = Infinity;
+  for (const r of resources) {
+    if (!r.alive) continue;
+    const d = dist(player.x, player.y, r.x, r.y);
+    if (d < hitRange + 20 && d < bestD) { bestD = d; best = r; }
+  }
+  if (best) {
+    let dmg = 1;
+    if (best.type === 'stone') { if (tools.pickaxe === 'stone') dmg = 2; else if (tools.pickaxe === 'iron') dmg = 5; }
+    else if (best.type === 'tree') { if (tools.axe === 'stone') dmg = 2; else if (tools.axe === 'iron') dmg = 5; }
+    else if (best.type === 'iron') { if (tools.pickaxe === 'wood') dmg = 0; else if (tools.pickaxe === 'stone') dmg = 1; else if (tools.pickaxe === 'iron') dmg = 5; }
+    if (dmg === 0) return;
+    player.hunger = Math.max(0, player.hunger - 0.2);
+    best.hp -= dmg;
+    if (best.hp <= 0) {
+      best.alive = false; best.respawnAt = performance.now()/1000 + RESPAWN_TIME;
+      let amount = best.type === 'iron' ? 3 + Math.floor(Math.random()*3) : 1 + Math.floor(Math.random()*5);
+      const key = best.type === 'tree' ? 'wood' : best.type;
+      const space = INV_MAX - inv[key];
+      if (space > 0) inv[key] += Math.min(space, amount);
+      saveGame();
+    }
+  }
+}
+
+function spawnZombie() {
+  const angle = Math.random() * Math.PI * 2;
+  const distFromPlayer = 400 + Math.random() * 200;
+  const zx = Math.max(20, Math.min(MAP_W - 20, player.x + Math.cos(angle) * distFromPlayer));
+  const zy = Math.max(20, Math.min(MAP_H - 20, player.y + Math.sin(angle) * distFromPlayer));
+  zombies.push({ x: zx, y: zy, r: 14, speed: 60, hp: 5, maxHp: 5, hitCooldown: 0, dmg: 3, isBoss: false });
+}
+
+function spawnBoss() {
+  const angle = Math.random() * Math.PI * 2;
+  const zx = Math.max(20, Math.min(MAP_W - 20, player.x + Math.cos(angle) * 500));
+  const zy = Math.max(20, Math.min(MAP_H - 20, player.y + Math.sin(angle) * 500));
+  
+  const bossHP = (Math.floor(day / 2)) * 100;
+  const attackCd = Math.max(1, 5 - Math.floor((day - 4) / 2) * 0.5);
+
+  zombies.push({ 
+    x: zx, y: zy, r: 28, speed: 70, 
+    hp: bossHP, maxHp: bossHP, hitCooldown: 0, dmg: 7, isBoss: true,
+    attackTimer: 5, attackCooldown: attackCd
+  });
+  
+  hintEl.textContent = `⚠️ БОСС ПОЯВИЛСЯ! (HP: ${bossHP})`;
+  hintEl.style.color = '#ff0000';
+  setTimeout(() => { hintEl.textContent = 'Джойстик — ходьба. ⛏ — использовать'; hintEl.style.color = '#ffd966'; }, 3000);
+}
+
+function iconOf(k) { return k==='stone'?'🪨':k==='wood'?'🪵':'⚙️'; }
+
+function openCraft() { activeCraftTab = 'craft'; renderMenu(); craftMenu.classList.add('open'); }
+function closeCraft() { craftMenu.classList.remove('open'); saveGame(); }
+closeCraftBtn.addEventListener('click', closeCraft);
+closeTradeBtn.addEventListener('click', () => { tradeMenu.classList.remove('open'); saveGame(); });
+
+// ===== ОТРИСОВКА =====
+function drawGround() {
+  ctx.fillStyle = '#4a6e33';
+  ctx.fillRect(cam.x - 100, cam.y - 100, W + 200, H + 200);
+}
+
+function drawPond() {
+  ctx.fillStyle = '#1e88e5';
+  ctx.beginPath(); ctx.ellipse(pond.x, pond.y, pond.r, pond.r * 0.7, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#1565c0';
+  ctx.beginPath(); ctx.ellipse(pond.x, pond.y + 10, pond.r * 0.8, pond.r * 0.5, 0, 0, Math.PI*2); ctx.fill();
+  const t = performance.now() / 1000;
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(pond.x + Math.sin(t)*10, pond.y - 5, 20, 10, 0, 0, Math.PI*2); ctx.stroke();
+}
+
+function drawFurnace() {
+  if (!furnace.built) return;
+  ctx.fillStyle = '#555'; ctx.fillRect(furnace.x - 20, furnace.y - 20, 40, 40);
+  ctx.fillStyle = '#333'; ctx.fillRect(furnace.x - 10, furnace.y - 10, 20, 20);
+  if (furnace.fuel > 0 && (furnace.input || furnace.output)) {
+    ctx.fillStyle = '#ff5722'; ctx.beginPath(); ctx.arc(furnace.x, furnace.y, 6, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+function drawAnimal(a) {
+  ctx.save();
+  ctx.translate(a.x, a.y);
+  
+  if (a.dirX < 0) ctx.scale(-1, 1); 
+
+  const isCow = a.type === 'cow';
+  
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath(); ctx.ellipse(0, 15, 20, 8, 0, 0, Math.PI*2); ctx.fill();
+
+  ctx.fillStyle = isCow ? '#fff' : '#ffb6c1';
+  ctx.beginPath(); ctx.ellipse(0, 0, 20, 14, 0, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.stroke();
+  
+  if (isCow) {
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.ellipse(-6, -4, 7, 5, 0.3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(8, 2, 5, 4, -0.2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-2, 8, 4, 3, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ff9999';
+    ctx.beginPath(); ctx.arc(-8, 12, 3, 0, Math.PI*2); ctx.fill();
+  } else {
+    ctx.fillStyle = '#ff69b4';
+    ctx.beginPath(); ctx.ellipse(16, -2, 6, 5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(16, -3, 1, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(16, 1, 1, 0, Math.PI*2); ctx.fill();
+    
+    ctx.fillStyle = '#ffb6c1';
+    ctx.beginPath(); ctx.moveTo(8, -12); ctx.lineTo(14, -18); ctx.lineTo(16, -10); ctx.fill();
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = isCow ? '#fff' : '#ffb6c1';
+  ctx.beginPath(); ctx.ellipse(14, -6, 12, 10, 0, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  ctx.fillStyle = isCow ? '#ddd' : '#ff69b4';
+  ctx.beginPath(); ctx.ellipse(10, -14, 4, 2, -0.5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(16, -8, 2, 0, Math.PI*2); ctx.fill();
+
+  if (isCow) {
+    ctx.fillStyle = '#ffeb3b';
+    ctx.beginPath(); ctx.moveTo(10, -16); ctx.lineTo(8, -22); ctx.lineTo(12, -18); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(16, -16); ctx.lineTo(18, -22); ctx.lineTo(20, -16); ctx.fill();
+    ctx.fillStyle = '#ff9999';
+    ctx.beginPath(); ctx.ellipse(24, -4, 5, 4, 0, 0, Math.PI*2); ctx.fill();
+  } else {
+    ctx.strokeStyle = '#ff69b4'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(-20, -5, 4, 0, Math.PI*1.5); ctx.stroke();
+  }
+
+  ctx.restore();
+
+  if (a.hp < a.maxHp) {
+    ctx.fillStyle = '#000a'; ctx.fillRect(a.x - 15, a.y - 30, 30, 4);
+    ctx.fillStyle = '#e53935'; ctx.fillRect(a.x - 15, a.y - 30, 30 * (a.hp/a.maxHp), 4);
+  }
+}
+
+function draw() {
+  ctx.fillStyle = '#1e1e1e'; ctx.fillRect(0, 0, W, H);
+  ctx.save(); ctx.translate(-cam.x, -cam.y);
+
+  drawGround();
+  drawPond();
+  
+  if (!farm.built) {
+    ctx.fillStyle = 'rgba(150,150,150,0.2)'; ctx.fillRect(farm.x - 100, farm.y - 100, 200, 200);
+    ctx.strokeStyle = '#aaa'; ctx.setLineDash([8,6]); ctx.lineWidth = 3; 
+    ctx.strokeRect(farm.x - 100, farm.y - 100, 200, 200); ctx.setLineDash([]);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center'; 
+    ctx.fillText('🚜 Ферма (15🪵 5🪨)', farm.x, farm.y - 110);
+    ctx.font = '12px monospace'; ctx.fillStyle = '#ffd966';
+    ctx.fillText(`🪵 ${farm.wood}/15 🪨 ${farm.stone}/5`, farm.x, farm.y);
+  } else {
+    for (const p of farmPlots) {
+      if (p.state === 'grass') { 
+        ctx.fillStyle = '#3e5a24'; 
+        ctx.beginPath(); ctx.roundRect(p.x - 25, p.y - 25, 50, 50, 8); ctx.fill(); 
+      } else { 
+        ctx.fillStyle = '#5a3a1a'; 
+        ctx.beginPath(); ctx.roundRect(p.x - 25, p.y - 25, 50, 50, 8); ctx.fill(); 
+        if (p.state === 'tilled') {
+          ctx.strokeStyle = '#3e2510'; ctx.lineWidth = 2; 
+          ctx.beginPath(); ctx.moveTo(p.x-15, p.y-10); ctx.lineTo(p.x+15, p.y-10); 
+          ctx.moveTo(p.x-15, p.y+5); ctx.lineTo(p.x+15, p.y+5); ctx.stroke(); 
+        }
+      }
+      
+      if (p.state === 'planted') {
+        ctx.fillStyle = p.type === 'potato' ? '#7cb342' : '#e91e63';
+        ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI*2); ctx.fill();
+        
+        const pw = 40, ph = 4;
+        const progress = Math.min(1, p.timer / p.maxTime);
+        ctx.fillStyle = '#111a'; ctx.fillRect(p.x - pw/2, p.y + 22, pw, ph);
+        ctx.fillStyle = '#4caf50'; ctx.fillRect(p.x - pw/2, p.y + 22, pw * progress, ph);
+
+        let text = '';
+        if (p.watered) text += '💧';
+        if (p.torch) text += '🔥';
+        if (text) {
+          ctx.font = '12px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+          ctx.fillText(text, p.x, p.y + 28);
+        }
+      } else if (p.state === 'ready') {
+        ctx.font = '16px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(p.type === 'potato' ? '🥔' : '🍓', p.x, p.y - 22);
+        ctx.fillStyle = p.type === 'potato' ? '#fbc02d' : '#e91e63';
+        ctx.beginPath(); ctx.arc(p.x, p.y, 12, 0, Math.PI*2); ctx.fill();
+      }
+
+      if (p.torch) {
+        ctx.fillStyle = '#795548'; ctx.fillRect(p.x + 18, p.y - 15, 4, 12);
+        ctx.fillStyle = '#ff9800'; ctx.beginPath(); ctx.arc(p.x + 20, p.y - 18, 5, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#ffeb3b'; ctx.beginPath(); ctx.arc(p.x + 20, p.y - 18, 2, 0, Math.PI*2); ctx.fill();
+      }
+    }
+  }
+
+  const need = currentNeed();
+  if (build.level >= 2) {
+    ctx.fillStyle = '#c8a27a'; ctx.fillRect(build.x - 45, build.y - 20, 90, 70);
+    ctx.fillStyle = '#a33'; ctx.beginPath(); ctx.moveTo(build.x - 55, build.y - 20); ctx.lineTo(build.x, build.y - 70); ctx.lineTo(build.x + 55, build.y - 20); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#5a3a1a'; ctx.fillRect(build.x - 12, build.y + 15, 24, 35);
+  }
+  if (need) {
+    const s = build;
+    ctx.fillStyle = 'rgba(150,150,150,0.30)'; ctx.fillRect(s.x - s.w/2, s.y - s.h/2, s.w, s.h);
+    ctx.strokeStyle = 'rgba(220,220,220,0.85)'; ctx.lineWidth = 3; ctx.setLineDash([8,6]); 
+    ctx.strokeRect(s.x - s.w/2, s.y - s.h/2, s.w, s.h); ctx.setLineDash([]);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 15px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText(need.label, s.x, s.y - s.h/2 - 26);
+    ctx.font = 'bold 15px monospace'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffe082';
+    let y = s.y - 22;
+    ctx.fillText(`🪨 ${s.stone}/${need.stone}`, s.x, y); y += 22;
+    ctx.fillText(`🪵 ${s.wood}/${need.wood}`, s.x, y); y += 22;
+    if (need.iron) ctx.fillText(`⚙️ ${s.iron}/${need.iron}`, s.x, y);
+  }
+
+  const rNeed = robotHouseNeed();
+  if (rNeed) {
+    const s = robotHouse;
+    ctx.fillStyle = 'rgba(150,150,150,0.30)'; ctx.fillRect(s.x - s.w/2, s.y - s.h/2, s.w, s.h);
+    ctx.strokeStyle = 'rgba(220,220,220,0.85)'; ctx.lineWidth = 3; ctx.setLineDash([8,6]); 
+    ctx.strokeRect(s.x - s.w/2, s.y - s.h/2, s.w, s.h); ctx.setLineDash([]);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 15px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText(rNeed.label, s.x, s.y - s.h/2 - 26);
+    ctx.font = 'bold 13px monospace'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffe082';
+    let y = s.y - 15;
+    ctx.fillText(`🪨 ${s.stone}/${rNeed.stone}`, s.x, y); y += 18;
+    ctx.fillText(`🪵 ${s.wood}/${rNeed.wood}`, s.x, y); y += 18;
+    ctx.fillText(`⚙️ ${s.iron}/${rNeed.iron}`, s.x, y);
+  } else if (robotHouse.built) {
+    ctx.fillStyle = '#888'; ctx.fillRect(robotHouse.x - 35, robotHouse.y - 15, 70, 50);
+    ctx.fillStyle = '#555'; ctx.beginPath(); ctx.moveTo(robotHouse.x - 45, robotHouse.y - 15); ctx.lineTo(robotHouse.x, robotHouse.y - 50); ctx.lineTo(robotHouse.x + 45, robotHouse.y - 15); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#333'; ctx.fillRect(robotHouse.x - 10, robotHouse.y + 15, 20, 20);
+    ctx.strokeStyle = '#ccc'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(robotHouse.x, robotHouse.y - 50); ctx.lineTo(robotHouse.x, robotHouse.y - 65); ctx.stroke();
+    ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(robotHouse.x, robotHouse.y - 65, 4, 0, Math.PI*2); ctx.fill();
+  }
+
+  if (forge.active) {
+    const f = forge;
+    ctx.fillStyle = '#5a5a5a'; ctx.fillRect(f.x - 40, f.y - 30, 80, 60);
+    ctx.fillStyle = '#3a3a3a'; ctx.fillRect(f.x - 45, f.y - 40, 90, 15);
+    const t = performance.now()/200; const r = 6 + Math.sin(t)*2;
+    ctx.fillStyle = '#ff5722'; ctx.beginPath(); ctx.arc(f.x, f.y + 5, r, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffeb3b'; ctx.beginPath(); ctx.arc(f.x, f.y + 5, r*0.5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText('🔨 Кузница', f.x, f.y - 48);
+  }
+
+  if (merchant.active) {
+    const m = merchant;
+    ctx.fillStyle = '#8e44ad'; ctx.beginPath(); ctx.arc(m.x, m.y, 16, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#f5cba7'; ctx.beginPath(); ctx.arc(m.x, m.y - 12, 10, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#2c3e50'; ctx.fillRect(m.x - 14, m.y - 24, 28, 4); ctx.fillRect(m.x - 8, m.y - 32, 16, 10);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText('🤝 Торговец', m.x, m.y - 36);
+  }
+
+  if (furnace.built) drawFurnace();
+
+  for (const r of resources) {
+    if (!r.alive) { 
+      ctx.globalAlpha = 0.22; ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(r.x, r.y, 12, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1; 
+      continue; 
+    }
+    
+    const time = performance.now() / 1000;
+    if (r.type === 'stone') {
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(r.x, r.y + 18, 22, 8, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#6b6b6b';
+      ctx.beginPath();
+      ctx.moveTo(r.x - 22, r.y + 5); ctx.lineTo(r.x - 15, r.y - 18); ctx.lineTo(r.x + 10, r.y - 22);
+      ctx.lineTo(r.x + 22, r.y - 5); ctx.lineTo(r.x + 18, r.y + 15); ctx.lineTo(r.x - 5, r.y + 20);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#9e9e9e';
+      ctx.beginPath();
+      ctx.moveTo(r.x - 12, r.y - 15); ctx.lineTo(r.x + 8, r.y - 18); ctx.lineTo(r.x + 5, r.y - 5); ctx.lineTo(r.x - 10, r.y - 2);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#444'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(r.x - 5, r.y - 10); ctx.lineTo(r.x + 2, r.y); ctx.lineTo(r.x - 2, r.y + 10); ctx.stroke();
+      
+    } else if (r.type === 'iron') {
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(r.x, r.y + 18, 22, 8, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#4a3b32';
+      ctx.beginPath();
+      ctx.moveTo(r.x - 22, r.y + 5); ctx.lineTo(r.x - 15, r.y - 18); ctx.lineTo(r.x + 10, r.y - 22);
+      ctx.lineTo(r.x + 22, r.y - 5); ctx.lineTo(r.x + 18, r.y + 15); ctx.lineTo(r.x - 5, r.y + 20);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffd54f';
+      for (let i = 0; i < 4; i++) {
+        const angle = (i * Math.PI / 2) + time;
+        ctx.beginPath(); ctx.arc(r.x + Math.cos(angle) * 8, r.y + Math.sin(angle) * 8, 3, 0, Math.PI*2); ctx.fill();
+      }
+      
+    } else if (r.type === 'tree') {
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath(); ctx.ellipse(r.x + 10, r.y + 30, 25, 10, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#5a3a1a'; ctx.fillRect(r.x - 8, r.y - 5, 16, 35);
+      ctx.fillStyle = '#4a2e12'; ctx.fillRect(r.x - 4, r.y, 3, 25); ctx.fillRect(r.x + 2, r.y + 5, 2, 20);
+      ctx.fillStyle = '#1e501e'; ctx.beginPath(); ctx.arc(r.x, r.y - 25, 32, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#2e7d32'; ctx.beginPath(); ctx.arc(r.x, r.y - 30, 25, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#4caf50';
+      ctx.beginPath(); ctx.arc(r.x - 8, r.y - 35, 15, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(r.x + 10, r.y - 28, 12, 0, Math.PI*2); ctx.fill();
+    }
+    
+    if (r.hp < HITS_BASE[r.type]) {
+      ctx.fillStyle = '#000a'; ctx.fillRect(r.x - 20, r.y - 40, 40, 5);
+      ctx.fillStyle = '#4caf50'; ctx.fillRect(r.x - 20, r.y - 40, 40 * (r.hp/HITS_BASE[r.type]), 5);
+    }
+  }
+
+  // Отрисовка красных зон от босса
+  for (const p of bossProjectiles) {
+    const progress = 1 - (p.timer / p.maxTimer); // От 0 до 1
+    ctx.fillStyle = `rgba(255, 0, 0, ${0.2 + progress * 0.3})`;
+    ctx.beginPath();
+    ctx.arc(p.targetX, p.targetY, p.radius, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(255, 0, 0, ${0.5 + progress * 0.5})`;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
+  for (const z of zombies) {
+    if (z.isBoss) {
+      ctx.fillStyle = '#2e7d32'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#f00'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(z.x - 8, z.y - 8, 5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(z.x + 8, z.y - 8, 5, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#000a'; ctx.fillRect(z.x - 40, z.y - z.r - 20, 80, 8);
+      ctx.fillStyle = '#e53935'; ctx.fillRect(z.x - 40, z.y - z.r - 20, 80 * (z.hp/z.maxHp), 8);
+      // Показываем КД атаки босса
+      ctx.fillStyle = '#fff'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(`💥 ${Math.ceil(z.attackTimer)}с`, z.x, z.y + z.r + 15);
+    } else {
+      ctx.fillStyle = '#4caf50'; ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(z.x - 5, z.y - 4, 3, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(z.x + 5, z.y - 4, 3, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#000a'; ctx.fillRect(z.x - 15, z.y - z.r - 10, 30, 4);
+      ctx.fillStyle = '#e53935'; ctx.fillRect(z.x - 15, z.y - z.r - 10, 30 * (z.hp/z.maxHp), 4);
+    }
+  }
+
+  if (robot.active) {
+    ctx.fillStyle = '#90a4ae'; ctx.beginPath(); ctx.arc(robot.x, robot.y, robot.r, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#455a64'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#00e5ff'; ctx.beginPath(); ctx.arc(robot.x - 4, robot.y - 3, 2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(robot.x + 4, robot.y - 3, 2, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#ccc'; ctx.beginPath(); ctx.moveTo(robot.x, robot.y - 10); ctx.lineTo(robot.x, robot.y - 18); ctx.stroke();
+    ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(robot.x, robot.y - 18, 2, 0, Math.PI*2); ctx.fill();
+
+    if (robot.invWood > 0 || robot.invStone > 0) {
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      let t = '';
+      if (robot.invWood > 0) t += `🪵${robot.invWood} `;
+      if (robot.invStone > 0) t += `🪨${robot.invStone}`;
+      ctx.fillText(t, robot.x, robot.y - 24);
+    }
+  }
+
+  for (const a of arrows) {
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(a.x - a.vx*0.02, a.y - a.vy*0.02); ctx.stroke();
+  }
+
+  for (const a of animals) drawAnimal(a);
+
+  ctx.fillStyle = player.hitCooldown > 0 ? '#ff6666' : '#ffcc66';
+  ctx.beginPath(); ctx.arc(player.x, player.y, player.r, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#a67c00'; ctx.lineWidth = 3; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath(); ctx.arc(player.x - 4, player.y - 4, 5, 0, Math.PI*2); ctx.fill();
+
+  ctx.restore();
+
+  if (isNight) {
+    const px = player.x - cam.x;
+    const py = player.y - cam.y;
+    const radius = inv.torch > 0 ? 300 : 200;
+    const grad = ctx.createRadialGradient(px, py, radius * 0.3, px, py, radius);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,20,0.96)');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+  }
+
+  ctx.globalAlpha = 0.35; ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(joy.baseX, joy.baseY, joy.radius, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1; ctx.fillStyle = '#ddd';
+  ctx.beginPath(); ctx.arc(joy.baseX + joy.dx, joy.baseY + joy.dy, joy.radius*0.45, 0, Math.PI*2); ctx.fill();
+
+  ctx.globalAlpha = btn.pressed ? 0.9 : 0.6; ctx.fillStyle = btn.pressed ? '#ff7043' : '#ffab40';
+  ctx.beginPath(); ctx.arc(btn.x, btn.y, btn.r, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1; ctx.fillStyle = '#fff'; ctx.font = 'bold 22px monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  
+  let btnIcon = '⛏';
+  if (activeItem === 'hoe') btnIcon = '🌱';
+  if (activeItem === 'wateringCan') btnIcon = '💧';
+  if (activeItem === 'seedPotato' || activeItem === 'seedBerry') btnIcon = '🌰';
+  if (activeItem === 'torch') btnIcon = '🕯️';
+  if (activeItem === 'bow') btnIcon = '🏹';
+  if (activeItem === 'fishingRod') btnIcon = '🎣';
+  ctx.fillText(btnIcon, btn.x, btn.y);
+
+  ctx.globalAlpha = btnSleep.pressed ? 0.9 : (isNight ? 1 : 0.5);
+  ctx.fillStyle = btnSleep.pressed ? '#2ecc71' : '#7bed9f';
+  ctx.beginPath(); ctx.arc(btnSleep.x, btnSleep.y, btnSleep.r, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1; ctx.fillStyle = '#111'; ctx.font = 'bold 12px monospace';
+  ctx.fillText('sleep', btnSleep.x, btnSleep.y);
+  
+  if (isFishing) {
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 24px monospace';
+    ctx.fillText(`Рыбалка: ${Math.ceil(fishingTimer)}с`, W/2, H/2 - 50);
+  }
+}
+
+// ===== ЗАПУСК =====
+loadGame();
+
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastTime)/1000);
+  lastTime = now;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
